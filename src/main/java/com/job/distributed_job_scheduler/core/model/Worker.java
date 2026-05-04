@@ -23,14 +23,17 @@ public class Worker {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "host_address")
-    private String hostAddress;
+    @Column
+    private String host;
 
     @Enumerated(EnumType.STRING)
     private WorkerStatus status = WorkerStatus.IDLE;
 
     @Column(name = "last_heartbeat")
     private OffsetDateTime lastHeartbeat;
+
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
