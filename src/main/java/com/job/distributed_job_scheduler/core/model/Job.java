@@ -22,7 +22,7 @@ import java.util.UUID;
 public class Job {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
 
     @Column(nullable = false)

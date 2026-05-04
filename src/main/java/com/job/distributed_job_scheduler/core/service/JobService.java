@@ -35,7 +35,6 @@ public class JobService {
     public Job updateJob(UUID jobId, Job updatedJob) {
         Job existingJob = getJobById(jobId);
 
-        // Cập nhật các trường cấu hình
         existingJob.setName(updatedJob.getName());
         existingJob.setDescription(updatedJob.getDescription());
         existingJob.setCronExpression(updatedJob.getCronExpression());
