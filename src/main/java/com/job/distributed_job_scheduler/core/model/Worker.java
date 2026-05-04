@@ -16,22 +16,22 @@ import java.util.UUID;
 @Builder
 public class Worker {
 
-	@Id
-	@GeneratedValue
-	private UUID id;
+    @Id
+    @GeneratedValue
+    private UUID id;
 
-	@Column(nullable = false)
-	private String name;
+    @Column(nullable = false)
+    private String name;
 
-	@Column(name = "host_address")
-	private String hostAddress;
+    @Column(name = "host_address")
+    private String hostAddress;
 
-	@Enumerated(EnumType.STRING)
-	private WorkerStatus status = WorkerStatus.IDLE;
+    @Enumerated(EnumType.STRING)
+    private WorkerStatus status = WorkerStatus.IDLE;
 
-	@Column(name = "last_heartbeat")
-	private OffsetDateTime lastHeartbeat;
+    @Column(name = "last_heartbeat")
+    private OffsetDateTime lastHeartbeat;
 
-	@Column(name = "updated_at")
-	private OffsetDateTime updatedAt;
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 }

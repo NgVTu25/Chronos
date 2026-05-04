@@ -4,50 +4,60 @@ import com.job.distributed_job_scheduler.core.common.ExecutionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "job_executions",
-		indexes = {
-				@Index(name = "idx_job_executions_job_id", columnList = "job_id"),
-				@Index(name = "idx_job_executions_status", columnList = "status")
-		})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(name = "job_executions")
 public class JobExecution {
 
-	@Id
-	@GeneratedValue
-	private UUID id;
+    @Id
+    @GeneratedValue
+    private UUID id;
 
-	@ManyToOne
-	@JoinColumn(name = "job_id")
-	private Job job;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_id", nullable = false)
+    private Job job;
 
-	@ManyToOne
-	@JoinColumn(name = "worker_id")
-	private Worker worker;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "worker_id")
+    private Worker worker;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private ExecutionStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private ExecutionStatus status = ExecutionStatus.PENDING;
 
-	@Column(name = "retry_count")
-	private Integer retryCount = 0;
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private Integer retryCount = 0;
 
-	@Column(name = "error_message", columnDefinition = "TEXT")
-	private String errorMessage;
+    @Column(name = "scheduled_at")
+    private Instant scheduledAt;
 
-	@Column(name = "started_at")
-	private OffsetDateTime startedAt;
+    @Column(name = "started_at")
+    private Instant startedAt;
 
-	@Column(name = "ended_at")
-	private OffsetDateTime endedAt;
+    @Column(name = "ended_at")
+    private Instant endedAt;
 
-	@Column(name = "created_at")
-	private OffsetDateTime createdAt;
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
+    @Column(name = "created_at", updatable = false)
+    @Builder.Default
+    private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

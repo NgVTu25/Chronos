@@ -4,120 +4,121 @@ import com.job.distributed_job_scheduler.core.common.JobStatus;
 import com.job.distributed_job_scheduler.core.model.Job;
 import com.job.distributed_job_scheduler.core.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class JobService {
-	private final JobRepository jobRepository;
 
-	public UUID createJob(Job job) {
-		jobRepository.save(job);
-		return job.getId();
-	}
+    private final JobRepository jobRepository;
 
-	public void updateJob(Job job) {
-		if (jobRepository.findById(job.getId()).isPresent()) {
-			job.setUpdatedAt(Instant.now());
-			jobRepository.save(job);
-			return;
-		}
-		throw new RuntimeException("Job with id " + job.getId() + " not found");
-	}
+    // ==========================================
+    //					CURD
+    // ==========================================
 
+    @Transactional
+    public UUID createJob(Job job) {
+        job.setStatus(JobStatus.ACTIVE);
+        // Ở thực tế, bạn sẽ parse cronExpression để tính ra nextRunAt lần đầu tiên ở đây
+        jobRepository.save(job);
+        log.info("Created new Job with ID: {}", job.getId());
+        return job.getId();
+    }
 
-	public void deleteJobById(UUID jobId) {
-		jobRepository.deleteById(UUID.fromString(String.valueOf(jobId)));
-	}
+    @Transactional
+    public Job updateJob(UUID jobId, Job updatedJob) {
+        Job existingJob = getJobById(jobId);
 
-	public Job getJobById(UUID jobId) {
-		return jobRepository.findById(jobId).orElse(null);
-	}
+        // Cập nhật các trường cấu hình
+        existingJob.setName(updatedJob.getName());
+        existingJob.setDescription(updatedJob.getDescription());
+        existingJob.setCronExpression(updatedJob.getCronExpression());
+        existingJob.setPayload(updatedJob.getPayload());
+        existingJob.setExecutionType(updatedJob.getExecutionType());
+        existingJob.setTimeoutSeconds(updatedJob.getTimeoutSeconds());
+        existingJob.setMaxRetryCount(updatedJob.getMaxRetryCount());
+        existingJob.setRetryBackoffSeconds(updatedJob.getRetryBackoffSeconds());
+        existingJob.setQueueName(updatedJob.getQueueName());
 
-	public Boolean existsJob(UUID jobId) {
-		return jobRepository.existsById(jobId);
-	}
+        return jobRepository.save(existingJob);
+    }
 
-	public void changeJobStatus(UUID jobId, JobStatus status, UUID workerID, Instant updatedAt) {
-		switch (status) {
-			case RETRY ->  {
-				Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
-				incrementRetryCount(jobId);
-				job.markRunning(workerID);
+    @Transactional
+    public void deleteJobById(UUID jobId) {
+        Job job = getJobById(jobId);
+        job.setStatus(JobStatus.DELETED);
+        jobRepository.save(job);
+        log.info("Soft deleted Job ID: {}", jobId);
+    }
 
-			}
+    public Job getJobById(UUID jobId) {
+        return jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
+    }
 
-			case RUNNING ->  {
-				Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
-                job.setUpdatedAt(Instant.now());
-				unlockJob(jobId, workerID);
-				job.markRunning(workerID);
-			}
+    public Boolean existsJob(UUID jobId) {
+        return jobRepository.existsById(jobId);
+    }
 
-			case SUCCESS ->  {
-				Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
-                job.markSuccess(workerID);
-				lockJob(jobId, workerID);
-			}
+    // ==========================================
+    // 2. NHÓM HÀM THAO TÁC TỪ DASHBOARD (UI)
+    // ==========================================
 
-			case FAILED ->  {
-                jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
-				lockJob(jobId, workerID);
-			}
+    @Transactional
+    public void pauseJob(UUID jobId) {
+        Job job = getJobById(jobId);
+        job.setStatus(JobStatus.PAUSED);
+        job.setNextRunAt(null); // Xóa lịch chạy tiếp theo để Scheduler bỏ qua
+        jobRepository.save(job);
+        log.info("Paused Job ID: {}", jobId);
+    }
 
-			case PENDING ->  {
-				jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job with id " + jobId + " not found"));
-				updateNextRunAt(jobId, workerID, updatedAt);
-			}
+    @Transactional
+    public void resumeJob(UUID jobId, Instant nextRun) {
+        Job job = getJobById(jobId);
+        job.setStatus(JobStatus.ACTIVE);
+        job.setNextRunAt(nextRun); // Tính toán lại lịch chạy
+        jobRepository.save(job);
+        log.info("Resumed Job ID: {}", jobId);
+    }
 
-			default ->  {
+    // ==========================================
+    // 3. NHÓM HÀM HỖ TRỢ DISTRIBUTED SCHEDULER
+    // ==========================================
 
-			}
-		}
-	}
+    /**
+     * Scheduler gọi hàm này để "khóa" (lock) job lại trước khi đẩy vào Message Queue / giao cho Worker
+     * Tránh việc các Scheduler Node khác bốc nhầm.
+     */
+    @Transactional
+    public boolean lockJobForExecution(UUID jobId, String schedulerNodeId) {
+        Job job = getJobById(jobId);
 
-	public void incrementRetryCount(UUID jobId) {
-		Job job = getJobById(jobId);
-		if (job != null) {
-			job.setRetryCount(job.getRetryCount() + 1);
-			if(job.getRetryCount() >= 3) {
-				job.markFailed();
-			}
-			updateJob(job);
-		}
-	}
+        // Kiểm tra xem job có đang bị node khác khóa không
+        if (job.getLockedBy() != null) {
+            log.warn("Job {} is already locked by {}", jobId, job.getLockedBy());
+            return false;
+        }
 
-	public void updateNextRunAt(UUID jobId, UUID workerId, Instant nextRunAt) {
-		Job job = getJobById(jobId);
-		if (job != null) {
-			job.setNextRunAt(nextRunAt);
-			job.markRunning(workerId);
-			updateJob(job);
-		}
-	}
+        job.lockForExecution(schedulerNodeId);
+        jobRepository.save(job); // Nhờ @Version trong Entity, nếu có concurrent update, nó sẽ quăng OptimisticLockException
+        return true;
+    }
 
-	public void lockJob(UUID jobId, UUID workerId) {
-		Job job = getJobById(jobId);
-		if (job != null) {
-			job.setLockedAt(Instant.now());
-			job.setLockedBy(workerId);
-			updateJob(job);
-		}
-	}
-
-	public void unlockJob(UUID jobId, UUID workerId) {
-		Job job = getJobById(jobId);
-		if (job != null) {
-			if (job.getLockedAt() != null) {
-				throw new RuntimeException("Job with id " + jobId + " isn't locked");
-			}
-			job.markRunning(workerId);
-			updateJob(job);
-		}
-	}
-
-
+    /**
+     * Khi Worker chạy xong (hoặc lỗi), gọi hàm này để mở khóa Job
+     * và cập nhật thời điểm chạy tiếp theo (tính toán từ Cron).
+     */
+    @Transactional
+    public void releaseLockAndScheduleNext(UUID jobId, Instant nextRunAt) {
+        Job job = getJobById(jobId);
+        job.releaseLockAndSetNextRun(nextRunAt);
+        jobRepository.save(job);
+    }
 }
