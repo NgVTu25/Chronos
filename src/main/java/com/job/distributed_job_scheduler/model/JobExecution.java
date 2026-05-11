@@ -1,6 +1,6 @@
-package com.job.distributed_job_scheduler.core.model;
+package com.job.distributed_job_scheduler.model;
 
-import com.job.distributed_job_scheduler.core.common.ExecutionStatus;
+import com.job.distributed_job_scheduler.common.ExecutionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

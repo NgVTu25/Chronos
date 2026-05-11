@@ -1,6 +1,6 @@
-package com.job.distributed_job_scheduler.core.model.dtos;
+package com.job.distributed_job_scheduler.model.dtos;
 
-import com.job.distributed_job_scheduler.core.common.JobStatus;
+import com.job.distributed_job_scheduler.common.JobStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

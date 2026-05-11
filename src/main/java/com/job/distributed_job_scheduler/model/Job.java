@@ -1,7 +1,7 @@
-package com.job.distributed_job_scheduler.core.model;
+package com.job.distributed_job_scheduler.model;
 
-import com.job.distributed_job_scheduler.core.common.ExecutionType;
-import com.job.distributed_job_scheduler.core.common.JobStatus;
+import com.job.distributed_job_scheduler.common.ExecutionType;
+import com.job.distributed_job_scheduler.common.JobStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

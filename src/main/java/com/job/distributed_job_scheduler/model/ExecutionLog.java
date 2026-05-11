@@ -1,4 +1,4 @@
-package com.job.distributed_job_scheduler.core.model;
+package com.job.distributed_job_scheduler.model;
 
 import jakarta.persistence.*;
 import lombok.*;

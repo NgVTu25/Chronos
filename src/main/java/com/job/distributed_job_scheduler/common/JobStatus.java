@@ -1,4 +1,4 @@
-package com.job.distributed_job_scheduler.core.common;
+package com.job.distributed_job_scheduler.common;
 
 public enum JobStatus {
     PENDING,

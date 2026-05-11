@@ -1,11 +1,11 @@
-package com.job.distributed_job_scheduler.core.service;
+package com.job.distributed_job_scheduler.service;
 
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
-import com.job.distributed_job_scheduler.core.model.Job;
-import com.job.distributed_job_scheduler.core.repository.JobRepository;
+import com.job.distributed_job_scheduler.model.Job;
+import com.job.distributed_job_scheduler.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

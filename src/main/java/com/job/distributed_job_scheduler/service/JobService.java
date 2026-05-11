@@ -1,11 +1,10 @@
-package com.job.distributed_job_scheduler.core.service;
+package com.job.distributed_job_scheduler.service;
 
-import com.job.distributed_job_scheduler.core.common.JobStatus;
-import com.job.distributed_job_scheduler.core.model.Job;
-import com.job.distributed_job_scheduler.core.repository.JobRepository;
+import com.job.distributed_job_scheduler.common.JobStatus;
+import com.job.distributed_job_scheduler.model.Job;
+import com.job.distributed_job_scheduler.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
